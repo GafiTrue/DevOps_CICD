@@ -1,11 +1,18 @@
-FROM golang:1.16 AS builder
+FROM golang:1.19-alpine as builder
 
-# Copy the code from the host and compile it
-WORKDIR $GOPATH/src/github.com/netology-code/sdvps-materials
-COPY . ./
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix nocgo -o /app .
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 FROM alpine:latest
-RUN apk -U add ca-certificates
-COPY --from=builder /app /app
-CMD ["/app"]
+
+RUN apk update && apk add --no-cache ca-certificates
+
+WORKDIR /root/
+COPY --from=builder /app/main .
+CMD ["./main"]
